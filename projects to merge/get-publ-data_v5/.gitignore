@@ -1,8 +1,0 @@
-.env
-.session.json
-downloads/
-__pycache__/
-*.pyc
-.DS_Store
-.trash/
-.venv/

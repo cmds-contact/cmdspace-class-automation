@@ -3,8 +3,9 @@
 .venv/
 venv/
 
-# Session
+# Session & State
 .session.json
+.run_counter
 
 # Data
 downloads/*.csv
