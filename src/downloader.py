@@ -62,8 +62,15 @@ def is_session_valid(context: BrowserContext) -> bool:
     try:
         page = context.new_page()
         page.goto('https://console.publ.biz/all-channels')
-        page.wait_for_timeout(2000)
-        return 'type=enter' not in page.url
+        page.wait_for_timeout(3000)
+        current_url = page.url
+        # 로그인 페이지로 리다이렉트되거나 메인 페이지에 머물면 세션 무효
+        if 'type=enter' in current_url:
+            return False
+        if current_url.rstrip('/') == 'https://console.publ.biz':
+            return False
+        # all-channels 페이지에 정상적으로 접근했는지 확인
+        return 'all-channels' in current_url
     except Exception:
         return False
     finally:

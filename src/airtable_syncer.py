@@ -80,6 +80,54 @@ def get_existing_records(table: Table, key_field: str) -> dict[str, str]:
     }
 
 
+def check_airtable_duplicates(table: Table, key_field: str) -> dict[str, list[str]]:
+    """Airtable 테이블에서 중복 키 검사
+
+    Args:
+        table: Airtable 테이블 객체
+        key_field: 고유 키 필드명
+
+    Returns:
+        key_value -> [record_id1, record_id2, ...] (2개 이상인 것만)
+    """
+    from collections import defaultdict
+
+    key_records: dict[str, list[str]] = defaultdict(list)
+
+    for record in table.all():
+        key_value = record['fields'].get(key_field)
+        if key_value:
+            key_records[key_value].append(record['id'])
+
+    return {
+        key: ids
+        for key, ids in key_records.items()
+        if len(ids) > 1
+    }
+
+
+def check_csv_duplicates(csv_data: list[dict[str, Any]], key_field: str) -> dict[str, int]:
+    """CSV 데이터에서 중복 키 검사
+
+    Args:
+        csv_data: CSV 레코드 리스트
+        key_field: 고유 키 필드명
+
+    Returns:
+        key_value -> 출현 횟수 (2회 이상인 것만)
+    """
+    from collections import Counter
+
+    keys = [row.get(key_field) for row in csv_data if row.get(key_field)]
+    counter = Counter(keys)
+
+    return {
+        key: count
+        for key, count in counter.items()
+        if count > 1
+    }
+
+
 def get_existing_orders(table: Table) -> dict[str, str]:
     """Airtable에서 기존 주문 레코드 조회
 
@@ -139,6 +187,11 @@ def get_pending_refunds(table: Table) -> dict[str, dict[str, Any]]:
 def sync_members_to_airtable(api: Api) -> int:
     """회원 데이터를 CSV에서 읽어 Airtable로 동기화
 
+    중복 방지 로직 포함:
+    - Airtable 기존 중복 검사
+    - CSV 내 중복 검사
+    - 삽입 후 카운트 검증
+
     Args:
         api: Airtable API 클라이언트
 
@@ -155,6 +208,20 @@ def sync_members_to_airtable(api: Api) -> int:
 
     csv_data = read_csv_file(file_path)
     print(f"CSV 레코드: {len(csv_data)}")
+
+    # [중복 방지] Airtable 기존 중복 검사
+    airtable_duplicates = check_airtable_duplicates(table, 'Member Code')
+    if airtable_duplicates:
+        print(f"⚠️  Airtable 중복 발견: {len(airtable_duplicates)}개")
+        for code, record_ids in list(airtable_duplicates.items())[:3]:
+            print(f"   - {code}: {len(record_ids)}개 레코드")
+
+    # [중복 방지] CSV 내 중복 검사
+    csv_duplicates = check_csv_duplicates(csv_data, 'Member Code')
+    if csv_duplicates:
+        print(f"⚠️  CSV 내 중복 발견: {len(csv_duplicates)}개")
+        for code, count in list(csv_duplicates.items())[:3]:
+            print(f"   - {code}: {count}회")
 
     existing = get_existing_records(table, 'Member Code')
     print(f"Airtable 기존 레코드: {len(existing)}")
@@ -203,6 +270,15 @@ def sync_members_to_airtable(api: Api) -> int:
         inserted += len(batch)
 
     print(f"삽입 완료: {inserted}개")
+
+    # [중복 방지] 삽입 후 카운트 검증
+    final_count = len(get_existing_records(table, 'Member Code'))
+    expected_count = len(existing) + inserted
+    if final_count != expected_count:
+        print(f"⚠️  카운트 불일치: 예상 {expected_count}개, 실제 {final_count}개")
+    else:
+        print(f"✓ 카운트 검증 완료: {final_count}개")
+
     return inserted
 
 
