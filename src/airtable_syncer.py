@@ -25,6 +25,7 @@ from .airtable import (
     backfill_iso_dates,
     fix_member_products_codes,
     validate_required_fields,
+    backfill_refunds_orders_link,
 )
 
 
@@ -89,6 +90,14 @@ def sync_all_to_airtable() -> dict[str, dict[str, Any]]:
         except Exception as e:
             logger.error(f"Refunds 동기화 오류: {e}")
             results['refunds'] = {'new': 0, 'updated': 0, 'error': str(e)}
+
+        # Refunds → Orders Linked Record 복구 (빈 연결 자동 채우기)
+        try:
+            refunds_linked = backfill_refunds_orders_link(api)
+            results['refunds']['orders_linked'] = refunds_linked
+        except Exception as e:
+            logger.warning(f"Refunds-Orders 연결 복구 건너뜀: {e}")
+            results['refunds']['orders_linked'] = 0
 
         # 필수 필드 검증 및 자동 복구
         try:

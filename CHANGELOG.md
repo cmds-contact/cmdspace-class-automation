@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Refunds-Orders 자동 연결 복구**
+  - `sync_all_to_airtable()` 실행 시 빈 Orders Linked Record 자동 복구
+  - 동기화 타이밍 문제로 인한 연결 누락 예방
+
 ## [0.3.0] - 2026-01-09
 
 ### Added
