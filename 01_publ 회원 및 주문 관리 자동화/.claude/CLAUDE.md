@@ -1,10 +1,10 @@
 # Git 브랜치
 
-**브랜치**: `feature/03-payment-site`
+**브랜치**: `feature/01-publ-manager`
 
 Git 작업 시 이 브랜치에서 작업하세요:
 ```bash
-git checkout feature/03-payment-site
+git checkout feature/01-publ-manager
 ```
 
 ---
