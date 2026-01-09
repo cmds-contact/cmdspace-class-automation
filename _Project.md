@@ -4,6 +4,8 @@
 
 CMDSPACE 클래스 운영에 필요한 회원 관리, 결제, 이메일 발송 등을 자동화하는 프로젝트
 
+**GitHub**: https://github.com/cmds-contact/cmdspace-class-automation
+
 ---
 
 ## 모듈 현황
