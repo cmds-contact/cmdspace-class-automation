@@ -14,6 +14,7 @@ from typing import Any
 from pyairtable import Api
 
 from . import config
+from .logger import logger
 
 
 def get_airtable_api() -> Api:
@@ -169,11 +170,6 @@ def identify_test_records(
     Returns:
         {'test': [...], 'normal': [...]}
     """
-    test_patterns = {
-        'name_keywords': ['테스트', 'test', 'TEST', '임시', 'temp', 'demo'],
-        'email_domains': ['test.com', 'example.com', 'temp.com', 'fake.com']
-    }
-
     test_records: list[str] = []
     normal_records: list[str] = []
 
@@ -191,14 +187,14 @@ def identify_test_records(
 
         # 이름 검사
         name = fields.get('Name', '') or ''
-        for keyword in test_patterns['name_keywords']:
+        for keyword in config.TEST_PATTERNS['name_keywords']:
             if keyword.lower() in name.lower():
                 is_test = True
                 break
 
         # 이메일 검사
         email = fields.get('E-mail', '') or ''
-        for domain in test_patterns['email_domains']:
+        for domain in config.TEST_PATTERNS['email_domains']:
             if email.endswith(f'@{domain}'):
                 is_test = True
                 break
@@ -229,36 +225,36 @@ def print_analysis_report(
         record_classification: 테스트/정상 분류
         csv_path: 분석에 사용된 CSV 파일 경로
     """
-    print("\n")
-    print("=" * 60)
-    print("        MEMBER DATA ANALYSIS REPORT")
-    print("=" * 60)
+    logger.info("\n")
+    logger.info("=" * 60)
+    logger.info("        MEMBER DATA ANALYSIS REPORT")
+    logger.info("=" * 60)
 
     # 요약
-    print("\n[요약]")
-    print(f"  - Airtable Members: {len(airtable_members)}개")
-    print(f"  - publ CSV Members: {len(csv_members)}개")
+    logger.info("\n[요약]")
+    logger.info(f"  - Airtable Members: {len(airtable_members)}개")
+    logger.info(f"  - publ CSV Members: {len(csv_members)}개")
     diff = len(airtable_members) - len(csv_members)
     diff_str = f"+{diff}" if diff > 0 else str(diff)
-    print(f"  - 차이: {diff_str}개 {'(Airtable에 더 많음)' if diff > 0 else '(CSV에 더 많음)' if diff < 0 else '(일치)'}")
-    print(f"  - 분석 CSV: {Path(csv_path).name}")
+    logger.info(f"  - 차이: {diff_str}개 {'(Airtable에 더 많음)' if diff > 0 else '(CSV에 더 많음)' if diff < 0 else '(일치)'}")
+    logger.info(f"  - 분석 CSV: {Path(csv_path).name}")
 
     # 중복 분석
-    print("\n[Airtable 내 중복 Member Code]")
+    logger.info("\n[Airtable 내 중복 Member Code]")
     if duplicates:
-        print(f"  - {len(duplicates)}개 중복 발견!")
+        logger.info(f"  - {len(duplicates)}개 중복 발견!")
         for code, record_ids in list(duplicates.items())[:5]:
-            print(f"    • {code}: {len(record_ids)}개 레코드")
+            logger.info(f"    • {code}: {len(record_ids)}개 레코드")
             for rid in record_ids:
-                print(f"      - {rid}")
+                logger.info(f"      - {rid}")
         if len(duplicates) > 5:
-            print(f"    ... 외 {len(duplicates) - 5}개")
+            logger.info(f"    ... 외 {len(duplicates) - 5}개")
     else:
-        print("  - 없음 ✓")
+        logger.info("  - 없음 ✓")
 
     # Airtable에만 있는 레코드 (orphan)
     only_in_airtable = discrepancies.get('only_in_airtable', [])
-    print(f"\n[Orphan 레코드] (Airtable에만 있음: {len(only_in_airtable)}개)")
+    logger.info(f"\n[Orphan 레코드] (Airtable에만 있음: {len(only_in_airtable)}개)")
 
     if only_in_airtable:
         # 테스트/정상 분류
@@ -266,51 +262,51 @@ def print_analysis_report(
         normal_records = record_classification.get('normal', [])
 
         if test_records:
-            print(f"\n  테스트 레코드 추정: {len(test_records)}개")
+            logger.info(f"\n  테스트 레코드 추정: {len(test_records)}개")
             for code in test_records[:5]:
                 member = airtable_members.get(code)
                 if member:
                     fields = member['fields']
-                    print(f"    {code}")
-                    print(f"      - Name: {fields.get('Name', 'N/A')}")
-                    print(f"      - Email: {fields.get('E-mail', 'N/A')}")
-                    print(f"      - Sign-up Date: {fields.get('Sign-up Date', 'N/A')}")
-                    print(f"      - Record ID: {member['id']}")
+                    logger.info(f"    {code}")
+                    logger.info(f"      - Name: {fields.get('Name', 'N/A')}")
+                    logger.info(f"      - Email: {fields.get('E-mail', 'N/A')}")
+                    logger.info(f"      - Sign-up Date: {fields.get('Sign-up Date', 'N/A')}")
+                    logger.info(f"      - Record ID: {member['id']}")
             if len(test_records) > 5:
-                print(f"    ... 외 {len(test_records) - 5}개")
+                logger.info(f"    ... 외 {len(test_records) - 5}개")
 
         if normal_records:
-            print(f"\n  publ 삭제 회원 추정: {len(normal_records)}개")
+            logger.info(f"\n  publ 삭제 회원 추정: {len(normal_records)}개")
             for code in normal_records[:5]:
                 member = airtable_members.get(code)
                 if member:
                     fields = member['fields']
-                    print(f"    {code}")
-                    print(f"      - Name: {fields.get('Name', 'N/A')}")
-                    print(f"      - Email: {fields.get('E-mail', 'N/A')}")
-                    print(f"      - Sign-up Date: {fields.get('Sign-up Date', 'N/A')}")
-                    print(f"      - Record ID: {member['id']}")
+                    logger.info(f"    {code}")
+                    logger.info(f"      - Name: {fields.get('Name', 'N/A')}")
+                    logger.info(f"      - Email: {fields.get('E-mail', 'N/A')}")
+                    logger.info(f"      - Sign-up Date: {fields.get('Sign-up Date', 'N/A')}")
+                    logger.info(f"      - Record ID: {member['id']}")
             if len(normal_records) > 5:
-                print(f"    ... 외 {len(normal_records) - 5}개")
+                logger.info(f"    ... 외 {len(normal_records) - 5}개")
     else:
-        print("  - 없음 ✓")
+        logger.info("  - 없음 ✓")
 
     # CSV에만 있는 레코드 (동기화 누락)
     only_in_csv = discrepancies.get('only_in_csv', [])
-    print(f"\n[동기화 누락 레코드] (CSV에만 있음: {len(only_in_csv)}개)")
+    logger.info(f"\n[동기화 누락 레코드] (CSV에만 있음: {len(only_in_csv)}개)")
     if only_in_csv:
         for code in only_in_csv[:5]:
             csv_data = csv_members.get(code, {})
-            print(f"  {code}")
-            print(f"    - Name: {csv_data.get('Name', 'N/A')}")
-            print(f"    - Email: {csv_data.get('E-mail', 'N/A')}")
+            logger.info(f"  {code}")
+            logger.info(f"    - Name: {csv_data.get('Name', 'N/A')}")
+            logger.info(f"    - Email: {csv_data.get('E-mail', 'N/A')}")
         if len(only_in_csv) > 5:
-            print(f"  ... 외 {len(only_in_csv) - 5}개")
+            logger.info(f"  ... 외 {len(only_in_csv) - 5}개")
     else:
-        print("  - 없음 ✓")
+        logger.info("  - 없음 ✓")
 
     # 권장 조치
-    print("\n[권장 조치]")
+    logger.info("\n[권장 조치]")
     actions = []
 
     if duplicates:
@@ -327,11 +323,11 @@ def print_analysis_report(
 
     if actions:
         for action in actions:
-            print(f"  {action}")
+            logger.info(f"  {action}")
     else:
-        print("  - 조치 필요 없음 ✓")
+        logger.info("  - 조치 필요 없음 ✓")
 
-    print("\n" + "=" * 60)
+    logger.info("\n" + "=" * 60)
 
 
 def run_analysis(csv_path: str | None = None) -> dict[str, Any]:
@@ -343,36 +339,36 @@ def run_analysis(csv_path: str | None = None) -> dict[str, Any]:
     Returns:
         분석 결과 딕셔너리
     """
-    print("\n데이터 불일치 분석 시작...\n")
+    logger.info("\n데이터 불일치 분석 시작...\n")
 
     # CSV 파일 찾기
     if csv_path is None:
         csv_path = find_latest_csv()
         if csv_path is None:
-            print("ERROR: members CSV 파일을 찾을 수 없습니다.")
+            logger.info("ERROR: members CSV 파일을 찾을 수 없습니다.")
             return {'error': 'CSV file not found'}
 
-    print(f"분석 CSV: {csv_path}")
+    logger.info(f"분석 CSV: {csv_path}")
 
     # API 연결
-    print("Airtable 연결 중...")
+    logger.info("Airtable 연결 중...")
     api = get_airtable_api()
 
     # 데이터 로드
-    print("Airtable 데이터 로드 중...")
+    logger.info("Airtable 데이터 로드 중...")
     airtable_members = load_airtable_members(api)
-    print(f"  - Airtable: {len(airtable_members)}개")
+    logger.info(f"  - Airtable: {len(airtable_members)}개")
 
-    print("CSV 데이터 로드 중...")
+    logger.info("CSV 데이터 로드 중...")
     csv_members = load_csv_members(csv_path)
-    print(f"  - CSV: {len(csv_members)}개")
+    logger.info(f"  - CSV: {len(csv_members)}개")
 
     # 중복 검사
-    print("중복 검사 중...")
+    logger.info("중복 검사 중...")
     duplicates = find_airtable_duplicates(airtable_members)
 
     # 불일치 검사
-    print("불일치 검사 중...")
+    logger.info("불일치 검사 중...")
     discrepancies = find_discrepancies(airtable_members, csv_members)
 
     # 테스트 레코드 분류

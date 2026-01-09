@@ -6,8 +6,11 @@ publ.biz 데이터를 자동으로 다운로드하여 Airtable에 동기화하�
 
 - publ.biz 콘솔에서 회원/주문/환불 데이터 자동 다운로드
 - Airtable에 데이터 동기화 (Linked Record 자동 연결)
-- 환불 상태 변경 자동 감지 및 is_refunded 업데이트
+- 환불 상태 변경 자동 감지 및 업데이트
 - 세션 관리로 재로그인 최소화
+- 실행 로그 파일 저장 (`logs/` 폴더)
+
+> **운영자 가이드**: 비개발자용 사용 설명서는 [docs/OPERATION_GUIDE.md](docs/OPERATION_GUIDE.md)를 참조하세요.
 
 ## 빠른 시작
 
@@ -86,14 +89,21 @@ publ-data-manager/
 ├── src/
 │   ├── __init__.py
 │   ├── config.py          # 설정 관리
+│   ├── logger.py          # 로깅 설정
 │   ├── utils.py           # 공통 유틸리티
 │   ├── downloader.py      # 데이터 다운로드
 │   ├── airtable_syncer.py # Airtable 동기화
+│   ├── data_analyzer.py   # 데이터 분석
 │   └── main.py            # 메인 실행
+├── docs/
+│   ├── OPERATION_GUIDE.md # 운영 가이드
+│   └── SYSTEM_DESIGN.md   # 시스템 설계
 ├── downloads/             # 다운로드된 CSV
 ├── archive/               # 아카이브된 CSV
+├── logs/                  # 실행 로그
 ├── .env                   # 환경변수 (git 제외)
 ├── .session.json          # 로그인 세션 (git 제외)
+├── settings.yaml          # 운영 설정
 ├── requirements.txt       # Python 패키지
 ├── run.command            # macOS 실행 스크립트
 └── README.md
@@ -119,9 +129,44 @@ publ-data-manager/
 
 ## 설정 옵션
 
-`src/config.py`에서 설정 변경 가능:
+설정은 두 파일로 분리되어 있습니다:
 
-```python
-HEADLESS = True          # False: 브라우저 창 표시
-BATCH_SIZE = 100         # 배치 크기
+### .env (민감 정보)
+
+```bash
+PUBL_ID=your_email@example.com
+PUBL_PW=your_password
+AIRTABLE_API_KEY=your-api-key
+AIRTABLE_BASE_ID=your-base-id
+```
+
+### settings.yaml (운영 설정)
+
+```yaml
+# 브라우저 설정
+browser:
+  headless: true          # true: 창 숨김, false: 창 표시
+  timeout_seconds: 30     # 페이지 로딩 대기
+
+# 동기화 설정
+sync:
+  batch_size: 100         # 한 번에 처리할 레코드 수
+  timezone: "+09:00"      # 타임존 (한국)
+
+# Airtable 테이블 이름
+airtable_tables:
+  members: "Members"
+  orders: "Orders"
+  # ...
+```
+
+## 로그 파일
+
+실행 로그는 `logs/` 폴더에 일별로 저장됩니다:
+
+```
+logs/
+├── sync_20260108.log
+├── sync_20260107.log
+└── ...
 ```

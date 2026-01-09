@@ -6,7 +6,10 @@ Playwright를 사용하여 publ.biz 콘솔에서 데이터를 자동으로 다�
 - 환불 목록 (refunds)
 """
 
+import csv
 import os
+import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -14,6 +17,16 @@ from typing import Any
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page, Download, Route
 
 from . import config
+from .logger import logger, log_section
+
+
+class Timeouts:
+    """Playwright 타임아웃 상수 (밀리초)"""
+    SESSION_CHECK = 3000      # 세션 확인 대기
+    PAGE_LOAD = 2000          # 페이지 로딩 대기
+    PAGE_NAVIGATE = 1500      # 페이지 전환 대기
+    LOGIN_COMPLETE = 30000    # 로그인 완료 대기
+    DOWNLOAD_WAIT = 5000      # 다운로드 대기
 
 
 def get_timestamp() -> str:
@@ -33,7 +46,7 @@ def save_download(download: Download, filename: str) -> Path:
     """
     download_path = config.DOWNLOAD_DIR / filename
     download.save_as(str(download_path))
-    print(f"   저장 완료: {filename}")
+    logger.debug(f"저장 완료: {filename}")
     return download_path
 
 
@@ -62,7 +75,7 @@ def is_session_valid(context: BrowserContext) -> bool:
     try:
         page = context.new_page()
         page.goto('https://console.publ.biz/all-channels')
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(Timeouts.SESSION_CHECK)
         current_url = page.url
         # 로그인 페이지로 리다이렉트되거나 메인 페이지에 머물면 세션 무효
         if 'type=enter' in current_url:
@@ -87,15 +100,13 @@ def login(browser: Browser) -> tuple[BrowserContext, Page]:
     Returns:
         (컨텍스트, 페이지) 튜플
     """
-    print("=" * 50)
-    print("1. 로그인")
-    print("=" * 50)
+    log_section("1. 로그인")
 
     session_file = str(config.SESSION_FILE)
 
     # 저장된 세션이 있으면 로드 시도
     if os.path.exists(session_file):
-        print("   저장된 세션 확인 중...")
+        logger.debug("저장된 세션 확인 중...")
         context = browser.new_context(
             storage_state=session_file,
             accept_downloads=True
@@ -104,11 +115,11 @@ def login(browser: Browser) -> tuple[BrowserContext, Page]:
         context.route("**/*", block_resources)
 
         if is_session_valid(context):
-            print("   저장된 세션 사용!")
+            logger.info("저장된 세션 사용!")
             page = context.new_page()
             return context, page
         else:
-            print("   세션 만료, 다시 로그인...")
+            logger.info("세션 만료, 다시 로그인...")
             context.close()
 
     # 새로 로그인
@@ -127,11 +138,11 @@ def login(browser: Browser) -> tuple[BrowserContext, Page]:
     page.get_by_role("button", name="Login", exact=True).click()
 
     # 로그인 완료 대기
-    page.wait_for_url('**/all-channels**', timeout=30000)
+    page.wait_for_url('**/all-channels**', timeout=Timeouts.LOGIN_COMPLETE)
 
     # 세션 저장
     context.storage_state(path=session_file)
-    print("   로그인 완료! (세션 저장됨)")
+    logger.info("로그인 완료! (세션 저장됨)")
 
     return context, page
 
@@ -146,9 +157,7 @@ def download_members(page: Page, timestamp: str) -> Path:
     Returns:
         다운로드된 파일 경로
     """
-    print("\n" + "=" * 50)
-    print("2. 회원 목록 다운로드")
-    print("=" * 50)
+    log_section("2. 회원 목록 다운로드")
 
     page.goto(config.PUBL_MEMBERS_URL)
 
@@ -174,7 +183,6 @@ def get_total_pages(page: Page) -> int:
     Returns:
         총 페이지 수 (찾지 못하면 1)
     """
-    import re
     try:
         text = page.inner_text('body')
         matches = re.findall(r'(\d+)\s*/\s*(\d+)', text)
@@ -197,9 +205,7 @@ def download_orders(page: Page, timestamp: str) -> Path:
     Returns:
         다운로드된 파일 경로
     """
-    print("\n" + "=" * 50)
-    print("3. 주문 목록 (Latest) 다운로드")
-    print("=" * 50)
+    log_section("3. 주문 목록 (Latest) 다운로드")
 
     page.goto(config.PUBL_ORDERS_URL)
 
@@ -226,29 +232,24 @@ def download_orders_all_pages(page: Page, timestamp: str) -> Path:
     Returns:
         병합된 CSV 파일 경로
     """
-    import csv
-    import shutil
-
-    print("\n" + "=" * 50)
-    print("3. 주문 목록 (전체 페이지) 다운로드")
-    print("=" * 50)
+    log_section("3. 주문 목록 (전체 페이지) 다운로드")
 
     # 첫 페이지로 이동하여 총 페이지 수 확인
     page.goto(config.PUBL_ORDERS_URL)
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(Timeouts.PAGE_LOAD)
 
     total_pages = get_total_pages(page)
-    print(f"   총 페이지: {total_pages}")
+    logger.info(f"총 페이지: {total_pages}")
 
     downloaded_files: list[Path] = []
 
     for page_num in range(1, total_pages + 1):
-        print(f"   페이지 {page_num}/{total_pages} 다운로드 중...")
+        logger.debug(f"페이지 {page_num}/{total_pages} 다운로드 중...")
 
         # 페이지 이동
         page_url = f"{config.PUBL_ORDERS_URL}?page={page_num}"
         page.goto(page_url)
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(Timeouts.PAGE_NAVIGATE)
 
         # 다운로드 버튼 클릭
         download_btn = page.locator('svg path[d*="20.1835,14.7857"]').locator('xpath=ancestor::button')
@@ -263,7 +264,7 @@ def download_orders_all_pages(page: Page, timestamp: str) -> Path:
         downloaded_files.append(file_path)
 
     # CSV 병합
-    print(f"   {len(downloaded_files)}개 파일 병합 중...")
+    logger.debug(f"{len(downloaded_files)}개 파일 병합 중...")
 
     merged_path = config.DOWNLOAD_DIR / f"{timestamp}_orders_all.csv"
     all_rows: list[dict] = []
@@ -293,8 +294,8 @@ def download_orders_all_pages(page: Page, timestamp: str) -> Path:
     for file_path in downloaded_files:
         shutil.move(str(file_path), str(trash_dir / file_path.name))
 
-    print(f"   병합 완료: {len(all_rows)}개 레코드")
-    print(f"   저장 완료: {merged_path.name}")
+    logger.info(f"병합 완료: {len(all_rows)}개 레코드")
+    logger.info(f"저장 완료: {merged_path.name}")
 
     return merged_path
 
@@ -309,9 +310,7 @@ def download_refunds(page: Page, timestamp: str) -> Path:
     Returns:
         다운로드된 파일 경로
     """
-    print("\n" + "=" * 50)
-    print("4. 환불 목록 다운로드")
-    print("=" * 50)
+    log_section("4. 환불 목록 다운로드")
 
     page.goto(config.PUBL_REFUNDS_URL)
 
@@ -348,9 +347,7 @@ def download_all() -> dict[str, Path]:
             downloaded_files['orders'] = download_orders(page, timestamp)
             downloaded_files['refunds'] = download_refunds(page, timestamp)
 
-            print("\n" + "=" * 50)
-            print("다운로드 완료!")
-            print("=" * 50)
+            log_section("다운로드 완료!")
 
         finally:
             if context:

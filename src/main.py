@@ -19,6 +19,7 @@ from typing import Any
 from . import config
 from .downloader import download_all, download_orders_all_pages, get_timestamp, login
 from .airtable_syncer import sync_all_to_airtable, record_sync_history
+from .logger import logger
 
 
 def archive_files() -> int:
@@ -61,20 +62,23 @@ def print_summary(
         airtable_results: Airtable 동기화 결과
         archived_count: 아카이브된 파일 수
     """
-    print("\n" + "=" * 60)
-    print("실행 결과 요약")
-    print("=" * 60)
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("실행 결과 요약")
+    logger.info("=" * 60)
 
     # 다운로드 결과
-    print("\n[다운로드]")
+    logger.info("")
+    logger.info("[다운로드]")
     for data_type, file_path in download_files.items():
         filename = Path(file_path).name if file_path else "실패"
-        print(f"  {data_type}: {filename}")
+        logger.info(f"  {data_type}: {filename}")
 
     # Airtable 동기화 결과
-    print("\n[Airtable 동기화]")
+    logger.info("")
+    logger.info("[Airtable 동기화]")
     if 'error' in airtable_results:
-        print(f"  오류: {airtable_results['error']}")
+        logger.error(f"  오류: {airtable_results['error']}")
     else:
         # 출력 순서 지정
         display_order = ['members', 'orders', 'products', 'member_products', 'refunds']
@@ -82,67 +86,72 @@ def print_summary(
             result = airtable_results.get(data_type)
             if isinstance(result, dict):
                 if 'error' in result:
-                    print(f"  {data_type.upper()}: 오류 - {result['error']}")
+                    logger.error(f"  {data_type.upper()}: 오류 - {result['error']}")
                 elif 'updated' in result:
-                    print(f"  {data_type.upper()}: {result['new']}개 신규, {result['updated']}개 업데이트")
+                    logger.info(f"  {data_type.upper()}: {result['new']}개 신규, {result['updated']}개 업데이트")
                 else:
-                    print(f"  {data_type.upper()}: {result['new']}개 신규")
+                    logger.info(f"  {data_type.upper()}: {result['new']}개 신규")
 
     # 아카이브 결과
-    print(f"\n[아카이브]")
-    print(f"  {archived_count}개 파일 이동")
+    logger.info("")
+    logger.info("[아카이브]")
+    logger.info(f"  {archived_count}개 파일 이동")
 
 
 def main() -> None:
     """메인 실행 함수"""
     start_time = datetime.now()
 
-    print("\n" + "=" * 60)
-    print("PUBL DATA MANAGER")
-    print(f"시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("PUBL DATA MANAGER")
+    logger.info(f"시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("=" * 60)
 
     # 환경변수 검증
     try:
         config.validate_config()
     except ValueError as e:
-        print(f"\n설정 오류:\n{e}")
-        print("\n.env 파일을 확인해주세요.")
+        logger.error(f"설정 오류:\n{e}")
+        logger.error(".env 파일을 확인해주세요.")
         return
 
     # 디렉토리 생성
     config.ensure_directories()
 
     # 1. 데이터 다운로드
-    print("\n" + "#" * 60)
-    print("# STEP 1: 데이터 다운로드")
-    print("#" * 60)
+    logger.info("")
+    logger.info("#" * 60)
+    logger.info("# STEP 1: 데이터 다운로드")
+    logger.info("#" * 60)
 
     try:
         download_files = download_all()
     except Exception as e:
-        print(f"\n다운로드 오류: {e}")
+        logger.error(f"다운로드 오류: {e}")
         return
 
     # 2. Airtable 동기화
-    print("\n" + "#" * 60)
-    print("# STEP 2: Airtable 동기화")
-    print("#" * 60)
+    logger.info("")
+    logger.info("#" * 60)
+    logger.info("# STEP 2: Airtable 동기화")
+    logger.info("#" * 60)
 
     airtable_results: dict[str, Any] = {}
     try:
         airtable_results = sync_all_to_airtable()
     except Exception as e:
-        print(f"\nAirtable 동기화 오류: {e}")
+        logger.error(f"Airtable 동기화 오류: {e}")
         airtable_results = {'error': str(e)}
 
     # 3. 파일 아카이브
-    print("\n" + "#" * 60)
-    print("# STEP 3: 파일 아카이브")
-    print("#" * 60)
+    logger.info("")
+    logger.info("#" * 60)
+    logger.info("# STEP 3: 파일 아카이브")
+    logger.info("#" * 60)
 
     archived_count = archive_files()
-    print(f"\n{archived_count}개 파일을 archive 폴더로 이동")
+    logger.info(f"{archived_count}개 파일을 archive 폴더로 이동")
 
     # 결과 요약
     print_summary(download_files, airtable_results, archived_count)
@@ -151,15 +160,17 @@ def main() -> None:
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
 
-    print("\n" + "=" * 60)
-    print(f"완료 시간: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"소요 시간: {duration:.1f}초")
-    print("=" * 60)
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info(f"완료 시간: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"소요 시간: {duration:.1f}초")
+    logger.info("=" * 60)
 
     # 4. 동기화 히스토리 기록
-    print("\n" + "#" * 60)
-    print("# STEP 4: 히스토리 기록")
-    print("#" * 60)
+    logger.info("")
+    logger.info("#" * 60)
+    logger.info("# STEP 4: 히스토리 기록")
+    logger.info("#" * 60)
 
     # 다운로드 파일명 목록 생성
     downloaded_files_list = [
@@ -192,16 +203,17 @@ def run_init_orders() -> None:
     """주문 전체 페이지 다운로드 (초기화용)"""
     from playwright.sync_api import sync_playwright
 
-    print("\n" + "=" * 60)
-    print("주문 전체 페이지 다운로드 (초기화)")
-    print("=" * 60)
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("주문 전체 페이지 다운로드 (초기화)")
+    logger.info("=" * 60)
 
     # 환경변수 검증
     try:
         config.validate_config()
     except ValueError as e:
-        print(f"\n설정 오류:\n{e}")
-        print("\n.env 파일을 확인해주세요.")
+        logger.error(f"설정 오류:\n{e}")
+        logger.error(".env 파일을 확인해주세요.")
         return
 
     config.ensure_directories()
@@ -215,7 +227,7 @@ def run_init_orders() -> None:
             try:
                 context, page = login(browser)
                 orders_file = download_orders_all_pages(page, timestamp)
-                print(f"\n다운로드 완료: {orders_file}")
+                logger.info(f"다운로드 완료: {orders_file}")
 
             finally:
                 if context:
@@ -223,7 +235,7 @@ def run_init_orders() -> None:
                 browser.close()
 
     except Exception as e:
-        print(f"\n오류: {e}")
+        logger.error(f"오류: {e}")
 
 
 if __name__ == '__main__':
@@ -231,9 +243,9 @@ if __name__ == '__main__':
         if sys.argv[1] == '--init-orders':
             run_init_orders()
         else:
-            print(f"알 수 없는 옵션: {sys.argv[1]}")
-            print("사용법:")
-            print("  python -m src.main              # 일반 동기화")
-            print("  python -m src.main --init-orders # 주문 전체 페이지 다운로드")
+            logger.warning(f"알 수 없는 옵션: {sys.argv[1]}")
+            logger.info("사용법:")
+            logger.info("  python -m src.main              # 일반 동기화")
+            logger.info("  python -m src.main --init-orders # 주문 전체 페이지 다운로드")
     else:
         main()
