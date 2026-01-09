@@ -1,12 +1,15 @@
 """설정 관리 모듈
 
 환경변수 및 애플리케이션 설정을 중앙 관리.
+- 민감 정보: .env 파일 (API 키, 비밀번호)
+- 운영 설정: settings.yaml 파일 (배치 크기, 타임존 등)
 """
 
 import os
 from pathlib import Path
 from typing import TypedDict
 
+import yaml
 from dotenv import load_dotenv
 
 
@@ -21,6 +24,28 @@ BASE_DIR: Path = Path(__file__).parent.parent
 
 # 환경변수 로드
 load_dotenv(BASE_DIR / '.env')
+
+# 설정 파일 경로
+SETTINGS_FILE: Path = BASE_DIR / 'settings.yaml'
+
+
+def load_settings() -> dict:
+    """외부 설정 파일 로드
+
+    Returns:
+        설정 딕셔너리. 파일이 없거나 오류 시 빈 딕셔너리 반환.
+    """
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            return {}
+    return {}
+
+
+# 설정 파일 로드 (한 번만 실행)
+_settings: dict = load_settings()
 
 # Publ 인증 정보
 PUBL_ID: str | None = os.getenv('PUBL_ID')
@@ -38,9 +63,9 @@ DOWNLOAD_DIR: Path = BASE_DIR / 'downloads'
 ARCHIVE_DIR: Path = BASE_DIR / 'archive'
 SESSION_FILE: Path = BASE_DIR / '.session.json'
 
-# 브라우저 설정
-HEADLESS: bool = True  # True: 브라우저 창 숨김, False: 브라우저 창 보임
-DEFAULT_TIMEOUT: int = 30000  # 30초
+# 브라우저 설정 (settings.yaml에서 로드, 기본값 제공)
+HEADLESS: bool = _settings.get('browser', {}).get('headless', True)
+DEFAULT_TIMEOUT: int = _settings.get('browser', {}).get('timeout_seconds', 30) * 1000
 
 # Publ 콘솔 URL
 PUBL_LOGIN_URL: str = 'https://console.publ.biz/?type=enter'
@@ -68,17 +93,44 @@ TABLES: dict[str, TableConfig] = {
 # 처리 순서
 PROCESSING_ORDER: list[str] = ['members', 'orders', 'refunds']
 
-# 배치 크기
-BATCH_SIZE: int = 100
+# 동기화 설정 (settings.yaml에서 로드, 기본값 제공)
+BATCH_SIZE: int = _settings.get('sync', {}).get('batch_size', 100)
+TIMEZONE: str = _settings.get('sync', {}).get('timezone', '+09:00')
 
-# Airtable 테이블 설정
-AIRTABLE_TABLES: dict[str, str] = {
+# Airtable 테이블 설정 (settings.yaml에서 로드, 기본값 제공)
+_default_tables: dict[str, str] = {
     'members': 'Members',
     'orders': 'Orders',
     'refunds': 'Refunds',
     'products': 'Products',
     'member_products': 'MemberProducts',
     'sync_history': 'SyncHistory'
+}
+AIRTABLE_TABLES: dict[str, str] = {
+    **_default_tables,
+    **_settings.get('airtable_tables', {})
+}
+
+# 테스트 데이터 필터링 패턴 (settings.yaml에서 로드, 기본값 제공)
+_default_test_patterns: dict[str, list[str]] = {
+    'name_keywords': ['테스트', 'test', 'TEST', '임시', 'temp', 'demo'],
+    'email_domains': ['test.com', 'example.com', 'temp.com', 'fake.com']
+}
+TEST_PATTERNS: dict[str, list[str]] = {
+    **_default_test_patterns,
+    **_settings.get('test_patterns', {})
+}
+
+# 테이블별 필수 필드 정의 (동기화 후 자동 검증용)
+# 필드명: (기본값, 설명)
+REQUIRED_FIELDS: dict[str, dict[str, tuple]] = {
+    'members': {
+        'Is Active': (True, '회원 활성 상태'),
+    },
+    # 필요시 다른 테이블 추가 가능
+    # 'orders': {
+    #     'Status': ('Pending', '주문 상태'),
+    # },
 }
 
 
