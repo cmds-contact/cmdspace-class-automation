@@ -1,14 +1,3 @@
-# Git 브랜치
-
-**브랜치**: `feature/01-publ-manager`
-
-Git 작업 시 이 브랜치에서 작업하세요:
-```bash
-git checkout feature/01-publ-manager
-```
-
----
-
 # MANDATORY: 프로젝트 규칙
 
 > **ABSOLUTE RULES - 어떤 상황에서도 예외 없이 반드시 준수**

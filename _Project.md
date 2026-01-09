@@ -8,15 +8,30 @@ CMDSPACE 클래스 운영에 필요한 회원 관리, 결제, 이메일 발송 �
 
 ---
 
+## Git 브랜치 구조
+
+```
+main (프로덕션)
+├── feature/01-publ-manager      # publ 회원 및 주문 관리
+├── feature/02-payment-template  # 결제확인서 양식
+├── feature/03-payment-site      # 결제확인서 발급 사이트
+├── feature/04-payment-generator # 결제확인서 생성
+└── feature/05-email-sender      # 이메일 자동발송
+```
+
+각 모듈 폴더의 `.claude/CLAUDE.md`에 해당 브랜치 정보가 포함되어 있음.
+
+---
+
 ## 모듈 현황
 
-| # | 모듈 | 상태 | 비고 |
-|---|------|------|------|
-| 01 | publ 회원 및 주문 관리 자동화 | 🟡 진행중 | 어느정도 완성 |
-| 02 | 결제확인서 양식 만들기 | ✅ 완료 | HTML/PDF 템플릿 완료 |
-| 03 | 결제확인서 발급 사이트 | ✅ 완료 | PoC 완료, 로컬 테스트 완료 |
-| 04 | 결제확인서 생성 | ✅ 완료 | R2 업로드까지 완료 |
-| 05 | 이메일 자동발송하기 | ✅ 완료 | 기본 세팅 완료, 테스트 발송 성공 |
+| # | 모듈 | 브랜치 | 상태 | 비고 |
+|---|------|--------|------|------|
+| 01 | publ 회원 및 주문 관리 자동화 | `feature/01-publ-manager` | 🟡 진행중 | v2 개발됨 |
+| 02 | 결제확인서 양식 만들기 | `feature/02-payment-template` | ✅ 완료 | HTML/PDF 템플릿 완료 |
+| 03 | 결제확인서 발급 사이트 | `feature/03-payment-site` | ✅ 완료 | PoC 완료, 로컬 테스트 완료 |
+| 04 | 결제확인서 생성 | `feature/04-payment-generator` | ✅ 완료 | R2 업로드까지 완료 |
+| 05 | 이메일 자동발송하기 | `feature/05-email-sender` | ✅ 완료 | Resend 테스트 발송 성공 |
 
 ---
 
