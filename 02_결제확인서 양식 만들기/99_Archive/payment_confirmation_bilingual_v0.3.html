@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>결제 확인서 - 커맨드스페이스</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+			background-color: #e0e0e0;
+			padding: 20px;
+			display: flex;
+			justify-content: center;
+		}
+
+		.a4-page {
+			width: 210mm;
+			min-height: 297mm;
+			background-color: #fff;
+			padding: 15mm 20mm;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+			display: flex;
+			flex-direction: column;
+		}
+
+		.header {
+			text-align: center;
+			margin-bottom: 8mm;
+			padding-bottom: 5mm;
+			border-bottom: 2px solid #333;
+		}
+
+		.header h1 {
+			font-size: 24px;
+			font-weight: bold;
+			color: #333;
+			margin-bottom: 3px;
+		}
+
+		.header .sub-title {
+			font-size: 12px;
+			color: #888;
+			font-weight: normal;
+		}
+
+		.document-info {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 6mm;
+			font-size: 12px;
+			padding: 0 5mm;
+		}
+
+		.document-info-item {
+			display: flex;
+			flex-direction: column;
+			gap: 1px;
+		}
+
+		.document-info-item .label {
+			font-weight: bold;
+			color: #333;
+			font-size: 11px;
+		}
+
+		.document-info-item .label-en {
+			font-size: 9px;
+			color: #999;
+			font-weight: normal;
+		}
+
+		.document-info-item .value {
+			font-size: 12px;
+			color: #333;
+		}
+
+		.content {
+			flex: 1;
+		}
+
+		.section {
+			margin-bottom: 5mm;
+		}
+
+		.section-title {
+			font-size: 13px;
+			font-weight: bold;
+			color: #333;
+			background-color: #f5f5f5;
+			padding: 2.5mm 4mm;
+			margin-bottom: 3mm;
+			border-left: 3px solid #333;
+			display: flex;
+			align-items: baseline;
+			gap: 8px;
+		}
+
+		.section-title .en {
+			font-size: 10px;
+			color: #888;
+			font-weight: normal;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		table th,
+		table td {
+			border: 1px solid #ddd;
+			padding: 2.5mm 3mm;
+			text-align: center;
+			font-size: 11px;
+		}
+
+		table th {
+			background-color: #f8f8f8;
+			font-weight: bold;
+			color: #333;
+		}
+
+		table th .en,
+		table td .en {
+			display: block;
+			font-size: 8px;
+			color: #999;
+			font-weight: normal;
+			margin-top: 1px;
+		}
+
+		.info-table {
+			width: 100%;
+		}
+
+		.info-table td {
+			text-align: left;
+			border: none;
+			padding: 2mm 3mm;
+			font-size: 11px;
+		}
+
+		.info-table .label {
+			width: 28mm;
+			font-weight: bold;
+			color: #333;
+			background-color: #f8f8f8;
+			border: 1px solid #ddd;
+			vertical-align: middle;
+		}
+
+		.info-table .label .en {
+			display: block;
+			font-size: 8px;
+			color: #999;
+			font-weight: normal;
+			margin-top: 1px;
+		}
+
+		.info-table .value {
+			border: 1px solid #ddd;
+		}
+
+		.signature-section {
+			margin-top: 8mm;
+			text-align: left;
+			padding-left: 5mm;
+		}
+
+		.signature-content {
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.company-name {
+			font-size: 18px;
+			font-weight: bold;
+			color: #333;
+		}
+
+		.stamp {
+			width: 15mm;
+			height: 15mm;
+		}
+
+		.stamp img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+
+		.logo-section {
+			text-align: right;
+			margin-top: 5mm;
+			padding-right: 5mm;
+		}
+
+		.bottom-logo {
+			height: 5mm;
+			opacity: 0.5;
+		}
+
+		.footer {
+			margin-top: auto;
+			padding-top: 5mm;
+			border-top: 1px solid #ddd;
+			text-align: center;
+			font-size: 9px;
+			color: #888;
+			line-height: 1.8;
+		}
+
+		.footer p {
+			margin-bottom: 2px;
+		}
+
+		.footer .en {
+			font-size: 8px;
+			color: #aaa;
+		}
+
+		@media print {
+			body {
+				background-color: #fff;
+				padding: 0;
+			}
+
+			.a4-page {
+				box-shadow: none;
+				padding: 10mm 15mm;
+				width: 100%;
+				min-height: auto;
+			}
+
+			@page {
+				size: A4;
+				margin: 0;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="a4-page">
+		<!-- 헤더 -->
+		<div class="header">
+			<h1>결제 확인서</h1>
+			<span class="sub-title">Payment Confirmation</span>
+		</div>
+
+		<!-- 문서 정보 -->
+		<div class="document-info">
+			<div class="document-info-item">
+				<span class="label">문서번호 <span class="label-en">Document No.</span></span>
+				<span class="value" id="documentNumber">CMD-2024-0001</span>
+			</div>
+			<div class="document-info-item">
+				<span class="label">발행일자 <span class="label-en">Issue Date</span></span>
+				<span class="value" id="issueDate">2024-01-01</span>
+			</div>
+			<div class="document-info-item">
+				<span class="label">주문번호 <span class="label-en">Order No.</span></span>
+				<span class="value" id="orderNumber">ORD-20240101-001</span>
+			</div>
+		</div>
+
+		<div class="content">
+			<!-- 주문내역 -->
+			<div class="section">
+				<div class="section-title">
+					주문내역
+					<span class="en">Order Details</span>
+				</div>
+				<table>
+					<thead>
+						<tr>
+							<th style="width: 12mm;">
+								번호
+								<span class="en">No.</span>
+							</th>
+							<th>
+								상품명
+								<span class="en">Product Name</span>
+							</th>
+							<th style="width: 35mm;">
+								상품코드
+								<span class="en">Product Code</span>
+							</th>
+							<th style="width: 30mm;">
+								금액
+								<span class="en">Amount</span>
+							</th>
+						</tr>
+					</thead>
+					<tbody id="orderItems">
+						<tr>
+							<td>1</td>
+							<td>실무 데이터 분석 마스터 클래스</td>
+							<td>PRD-001</td>
+							<td>99,000원</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- 결제 정보 -->
+			<div class="section">
+				<div class="section-title">
+					결제 정보
+					<span class="en">Payment Information</span>
+				</div>
+				<table class="info-table">
+					<tr>
+						<td class="label">
+							결제일시
+							<span class="en">Payment Date</span>
+						</td>
+						<td class="value" id="paymentDate">2024-01-01 14:30:00</td>
+						<td class="label">
+							결제수단
+							<span class="en">Payment Method</span>
+						</td>
+						<td class="value" id="paymentMethod">신용카드</td>
+					</tr>
+					<tr>
+						<td class="label">
+							결제 방법
+							<span class="en">Payment Type</span>
+						</td>
+						<td class="value" id="paymentType">일시불</td>
+						<td class="label">
+							결제 금액
+							<span class="en">Total Amount</span>
+						</td>
+						<td class="value" id="paymentAmount" style="font-weight: bold; color: #c00;">99,000원</td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- 수강생 정보 -->
+			<div class="section">
+				<div class="section-title">
+					수강생 정보
+					<span class="en">Student Information</span>
+				</div>
+				<table class="info-table">
+					<tr>
+						<td class="label">
+							이름
+							<span class="en">Name</span>
+						</td>
+						<td class="value" id="studentName">홍길동</td>
+					</tr>
+					<tr>
+						<td class="label">
+							전화번호
+							<span class="en">Phone</span>
+						</td>
+						<td class="value" id="studentPhone">010-1234-5678</td>
+					</tr>
+					<tr>
+						<td class="label">
+							이메일주소
+							<span class="en">Email</span>
+						</td>
+						<td class="value" id="studentEmail">example@email.com</td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- 판매사업자 정보 -->
+			<div class="section">
+				<div class="section-title">
+					판매사업자 정보
+					<span class="en">Seller Information</span>
+				</div>
+				<table class="info-table">
+					<tr>
+						<td class="label">
+							사업자 정보
+							<span class="en">Business Name</span>
+						</td>
+						<td class="value">커맨드스페이스</td>
+					</tr>
+					<tr>
+						<td class="label">
+							사이트 주소
+							<span class="en">Website</span>
+						</td>
+						<td class="value">cmdspace.kr</td>
+					</tr>
+					<tr>
+						<td class="label">
+							연락처
+							<span class="en">Contact</span>
+						</td>
+						<td class="value">02-2636-1918</td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- 서명/인감 -->
+			<div class="signature-section">
+				<div class="signature-content">
+					<span class="company-name">커맨드스페이스</span>
+					<div class="stamp">
+						<img src="assets/stamp.png" alt="인감">
+					</div>
+				</div>
+			</div>
+
+			<!-- 로고 (우측 하단) -->
+			<div class="logo-section">
+				<img src="assets/CMDSPACE_logo.png" alt="커맨드스페이스" class="bottom-logo">
+			</div>
+		</div>
+
+		<!-- 하단 문구 -->
+		<div class="footer">
+			<p>해당 결제 확인서는 결제 증빙 용도로만 사용 가능하며, 동의 없이 무단 수정 및 부정 사용을 금지합니다.</p>
+			<p class="en">This payment confirmation is for proof of payment only. Unauthorized modification or misuse is prohibited.</p>
+			<p style="margin-top: 8px;">Copyright ⓒ 커맨드스페이스 All right reserved.</p>
+		</div>
+	</div>
+</body>
+</html>

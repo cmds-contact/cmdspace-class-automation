@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.png
+*.jpg
+playwright-report/
+test-results/
+download/
+downloads/

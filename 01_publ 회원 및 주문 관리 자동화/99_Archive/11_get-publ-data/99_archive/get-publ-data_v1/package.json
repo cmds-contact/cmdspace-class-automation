@@ -1,0 +1,22 @@
+{
+  "name": "publ-login-automation",
+  "version": "1.0.0",
+  "description": "Playwright automation for publ.biz login",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "test": "node test-modules.js",
+    "test:browser": "node test-modules.js browser-init",
+    "test:login": "node test-modules.js login",
+    "test:members": "node test-modules.js download-members",
+    "test:orders": "node test-modules.js download-orders",
+    "install-playwright": "npx playwright install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "dotenv": "^16.3.1"
+  }
+}

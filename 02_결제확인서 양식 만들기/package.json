@@ -1,0 +1,13 @@
+{
+  "name": "payment-confirmation-pdf",
+  "version": "1.0.0",
+  "description": "결제 확인서 HTML을 PDF로 변환",
+  "main": "convert-to-pdf.js",
+  "scripts": {
+    "convert": "node convert-to-pdf.js"
+  },
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  }
+}
+
