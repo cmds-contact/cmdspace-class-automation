@@ -26,6 +26,10 @@ from .airtable import (
     fix_member_products_codes,
     validate_required_fields,
     backfill_refunds_orders_link,
+    # Member management
+    count_active_members,
+    count_csv_members,
+    deactivate_withdrawn_members,
 )
 
 
@@ -56,6 +60,22 @@ def sync_all_to_airtable() -> dict[str, dict[str, Any]]:
 
         # Members 동기화
         results['members'] = {'new': sync_members_to_airtable(api)}
+
+        # 회원 수 비교 (효율적 탈퇴 회원 관리)
+        try:
+            airtable_active_count = count_active_members(api)
+            csv_member_count = count_csv_members()
+
+            if airtable_active_count != csv_member_count:
+                logger.info(f"회원 수 불일치 감지: Airtable 활성 {airtable_active_count}명 ≠ CSV {csv_member_count}명")
+                withdrawn_result = deactivate_withdrawn_members(api)
+                results['members']['withdrawn'] = withdrawn_result
+            else:
+                logger.info(f"회원 수 일치: {airtable_active_count}명 (탈퇴 회원 체크 생략)")
+                results['members']['withdrawn'] = {'skipped': True, 'reason': 'count_match'}
+        except Exception as e:
+            logger.warning(f"탈퇴 회원 처리 건너뜀: {e}")
+            results['members']['withdrawn'] = {'error': str(e)}
 
         # Orders 동기화 (신규 추가, Member 연결)
         results['orders'] = {'new': sync_orders_to_airtable(api)}

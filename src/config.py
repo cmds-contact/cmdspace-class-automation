@@ -123,9 +123,11 @@ TEST_PATTERNS: dict[str, list[str]] = {
 
 # 테이블별 필수 필드 정의 (동기화 후 자동 검증용)
 # 필드명: (기본값, 설명)
+# 참고: Is Active는 탈퇴 회원 관리를 위해 자동 복구에서 제외
+#       신규 회원은 sync_members()에서 Is Active = True로 생성됨
 REQUIRED_FIELDS: dict[str, dict[str, tuple]] = {
     'members': {
-        'Is Active': (True, '회원 활성 상태'),
+        # Is Active는 의도적으로 False일 수 있으므로 여기서 관리하지 않음
     },
     # 필요시 다른 테이블 추가 가능
     # 'orders': {

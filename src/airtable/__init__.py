@@ -32,6 +32,9 @@ from .maintenance import (
     backfill_is_active,
     validate_required_fields,
     backfill_refunds_orders_link,
+    count_active_members,
+    count_csv_members,
+    deactivate_withdrawn_members,
 )
 
 __all__ = [
@@ -64,4 +67,8 @@ __all__ = [
     'backfill_is_active',
     'validate_required_fields',
     'backfill_refunds_orders_link',
+    # Member management
+    'count_active_members',
+    'count_csv_members',
+    'deactivate_withdrawn_members',
 ]

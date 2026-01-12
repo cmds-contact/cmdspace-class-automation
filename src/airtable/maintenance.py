@@ -10,6 +10,7 @@ from ..logger import logger
 from ..utils import batch_iterator, to_iso_datetime
 
 from .client import get_api, get_table
+from .csv_reader import find_csv, read_csv
 from .records import get_existing_orders
 
 # Airtable 배치 크기 (API 제한)
@@ -399,3 +400,162 @@ def backfill_refunds_orders_link(api: Api = None) -> int:
 
     logger.info(f"복구 완료: {updated}개")
     return updated
+
+
+def count_active_members(api: Api = None) -> int:
+    """Airtable에서 Is Active = True인 회원 수 반환
+
+    Args:
+        api: Airtable API 클라이언트 (없으면 새로 생성)
+
+    Returns:
+        활성 회원 수
+    """
+    if api is None:
+        api = get_api()
+
+    table = get_table(api, config.AIRTABLE_TABLES['members'])
+    active_count = 0
+    for record in table.all():
+        if record['fields'].get('Is Active') is True:
+            active_count += 1
+    return active_count
+
+
+def count_csv_members() -> int:
+    """최신 Members CSV의 회원 수 반환
+
+    Returns:
+        CSV 회원 수
+    """
+    csv_path = find_csv(config.TABLES['members']['file_pattern'])
+    csv_data = read_csv(csv_path)
+    return len(csv_data)
+
+
+def deactivate_withdrawn_members(api: Api = None) -> dict[str, int]:
+    """publ에서 삭제된(탈퇴한) 회원을 비활성화
+
+    CSV에 없고 Airtable에만 있는 회원 중:
+    - 테스트 레코드 제외 (config.TEST_PATTERNS 활용)
+    - Is Active가 True인 회원만 False로 변경
+
+    Args:
+        api: Airtable API 클라이언트 (없으면 새로 생성)
+
+    Returns:
+        {
+            'checked': 검사한 회원 수 (Airtable에만 있는),
+            'withdrawn': 탈퇴로 판단된 회원 수 (테스트 제외),
+            'deactivated': 비활성화 처리된 회원 수,
+            'already_inactive': 이미 비활성 상태인 회원 수,
+            'test_records_skipped': 건너뛴 테스트 레코드 수
+        }
+    """
+    if api is None:
+        api = get_api()
+
+    logger.info(f"\n{'='*60}")
+    logger.info("탈퇴 회원 비활성화")
+    logger.info("=" * 60)
+
+    # 1. Airtable 회원 로드
+    members_table = get_table(api, config.AIRTABLE_TABLES['members'])
+    airtable_members: dict[str, dict] = {}
+    for record in members_table.all():
+        member_code = record['fields'].get('Member Code')
+        if member_code:
+            airtable_members[member_code] = {
+                'id': record['id'],
+                'fields': record['fields']
+            }
+
+    # 2. CSV 회원 로드
+    csv_path = find_csv(config.TABLES['members']['file_pattern'])
+    csv_data = read_csv(csv_path)
+    csv_members: set[str] = set()
+    for row in csv_data:
+        member_code = row.get('Member Code')
+        if member_code:
+            csv_members.add(member_code)
+
+    logger.info(f"Airtable 회원: {len(airtable_members)}명")
+    logger.info(f"CSV 회원: {len(csv_members)}명")
+
+    # 3. Airtable에만 있는 회원 찾기 (잠재적 탈퇴자)
+    only_in_airtable = set(airtable_members.keys()) - csv_members
+    logger.info(f"Airtable에만 있는 회원: {len(only_in_airtable)}명")
+
+    # 4. 테스트 레코드 분류
+    test_records: list[str] = []
+    normal_records: list[str] = []
+
+    for code in only_in_airtable:
+        member_data = airtable_members.get(code)
+        if not member_data:
+            continue
+
+        fields = member_data['fields']
+        is_test = False
+
+        # Member Code 패턴 검사 (SUB로 시작하지 않으면 의심)
+        if not code.startswith('SUB'):
+            is_test = True
+
+        # 이름 검사
+        name = fields.get('Name', '') or ''
+        for keyword in config.TEST_PATTERNS['name_keywords']:
+            if keyword.lower() in name.lower():
+                is_test = True
+                break
+
+        # 이메일 검사
+        email = fields.get('E-mail', '') or ''
+        for domain in config.TEST_PATTERNS['email_domains']:
+            if email.endswith(f'@{domain}'):
+                is_test = True
+                break
+
+        if is_test:
+            test_records.append(code)
+        else:
+            normal_records.append(code)
+
+    logger.info(f"테스트 레코드: {len(test_records)}명 (건너뜀)")
+    logger.info(f"탈퇴 추정 회원: {len(normal_records)}명")
+
+    # 5. 탈퇴 회원 비활성화 (Is Active = False)
+    records_to_update: list[dict] = []
+    already_inactive = 0
+
+    for code in normal_records:
+        member_data = airtable_members[code]
+        is_active = member_data['fields'].get('Is Active')
+
+        if is_active is True:
+            records_to_update.append({
+                'id': member_data['id'],
+                'fields': {'Is Active': False}
+            })
+            logger.info(f"  비활성화 대상: {code}")
+        else:
+            already_inactive += 1
+
+    logger.info(f"비활성화 대상: {len(records_to_update)}명")
+    logger.info(f"이미 비활성: {already_inactive}명")
+
+    # 6. 배치 업데이트
+    deactivated = 0
+    if records_to_update:
+        for batch in batch_iterator(records_to_update, AIRTABLE_BATCH_SIZE):
+            members_table.batch_update(batch)
+            deactivated += len(batch)
+        logger.info(f"비활성화 완료: {deactivated}명")
+
+    return {
+        'checked': len(only_in_airtable),
+        'withdrawn': len(normal_records),
+        'deactivated': deactivated,
+        'already_inactive': already_inactive,
+        'test_records_skipped': len(test_records)
+    }
