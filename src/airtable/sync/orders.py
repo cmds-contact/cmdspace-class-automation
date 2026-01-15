@@ -9,11 +9,11 @@ from pyairtable import Api
 
 from ... import config
 from ...logger import logger
-from ...utils import parse_price, safe_get, batch_iterator, to_iso_datetime
+from ...utils import parse_price, safe_get, batch_iterator, to_iso_datetime, extract_program_code
 
 from ..client import get_table
 from ..csv_reader import read_csv, find_csv
-from ..records import get_existing_by_key, get_existing_orders, get_existing_member_products
+from ..records import get_existing_by_key, get_existing_orders, get_existing_member_programs
 
 # Airtable 배치 크기 (API 제한)
 AIRTABLE_BATCH_SIZE = 10
@@ -98,10 +98,11 @@ def sync_orders(api: Api) -> int:
     return inserted
 
 
-def update_orders_member_products_link(api: Api) -> int:
-    """Orders 테이블의 MemberProducts Linked Record 업데이트
+def update_orders_member_programs_link(api: Api) -> int:
+    """Orders 테이블의 MemberPrograms Linked Record 업데이트
 
-    MemberProducts 동기화 후 호출하여 Orders에 Linked Record 연결.
+    MemberPrograms 동기화 후 호출하여 Orders에 Linked Record 연결.
+    Program Code 기반으로 연결 (같은 프로그램의 다른 옵션도 동일한 MemberPrograms에 연결).
     이미 연결된 Orders는 건너뜀.
 
     Args:
@@ -111,15 +112,15 @@ def update_orders_member_products_link(api: Api) -> int:
         업데이트된 레코드 수
     """
     logger.info(f"\n{'='*50}")
-    logger.info(f"Orders → MemberProducts 연결 업데이트")
+    logger.info(f"Orders → MemberPrograms 연결 업데이트")
     logger.info(f"{'='*50}")
 
     orders_table = get_table(api, config.AIRTABLE_TABLES['orders'])
-    member_products_table = get_table(api, config.AIRTABLE_TABLES['member_products'])
+    member_programs_table = get_table(api, config.AIRTABLE_TABLES['member_programs'])
 
-    # MemberProducts: MemberProducts Code -> record_id
-    existing_member_products = get_existing_member_products(member_products_table)
-    logger.info(f"MemberProducts: {len(existing_member_products)}개")
+    # MemberPrograms: MemberPrograms Code -> record_id
+    existing_member_programs = get_existing_member_programs(member_programs_table)
+    logger.info(f"MemberPrograms: {len(existing_member_programs)}개")
 
     # Orders 순회하여 연결되지 않은 레코드 찾기
     records_to_update = []
@@ -127,8 +128,8 @@ def update_orders_member_products_link(api: Api) -> int:
     logger.info(f"Orders 전체: {len(orders_all)}개")
 
     for record in orders_all:
-        # 이미 MemberProducts가 연결되어 있으면 건너뛰기
-        if record['fields'].get('MemberProducts'):
+        # 이미 MemberPrograms가 연결되어 있으면 건너뛰기
+        if record['fields'].get('MemberPrograms'):
             continue
 
         member_code = record['fields'].get('Member Code')
@@ -137,13 +138,15 @@ def update_orders_member_products_link(api: Api) -> int:
         if not member_code or not product_name:
             continue
 
-        member_products_code = f"{member_code}_{product_name}"
-        member_products_id = existing_member_products.get(member_products_code)
+        # Product Code에서 Program Code 추출하여 연결
+        program_code = extract_program_code(product_name)
+        member_programs_code = f"{member_code}_{program_code}"
+        member_programs_id = existing_member_programs.get(member_programs_code)
 
-        if member_products_id:
+        if member_programs_id:
             records_to_update.append({
                 'id': record['id'],
-                'fields': {'MemberProducts': [member_products_id]}
+                'fields': {'MemberPrograms': [member_programs_id]}
             })
 
     logger.info(f"연결 대상: {len(records_to_update)}개")

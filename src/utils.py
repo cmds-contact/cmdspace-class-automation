@@ -3,8 +3,36 @@
 Airtable 동기화에서 공통으로 사용하는 함수들을 모아둔 모듈.
 """
 
+import re
 from datetime import datetime, timedelta
 from typing import Any, Callable, Iterator
+
+
+def extract_program_code(product_code: str) -> str:
+    """Product Code에서 Program Code 추출
+
+    Product Code의 처음 3개 세그먼트를 Program Code로 사용합니다.
+    뒷부분은 구매 옵션(할인, 정가 등)을 나타냅니다.
+
+    Args:
+        product_code: 전체 Product Code (예: KM-CMDS-OBM-ME-1)
+
+    Returns:
+        Program Code (처음 3개 세그먼트) 또는 원본 (패턴 불일치 시)
+
+    Examples:
+        >>> extract_program_code('KM-CMDS-OBM-ME-1')
+        'KM-CMDS-OBM'
+        >>> extract_program_code('KM-CMDS-OBM-YE-2')
+        'KM-CMDS-OBM'
+        >>> extract_program_code('KM-CMDS-OBM')
+        'KM-CMDS-OBM'
+        >>> extract_program_code('SIMPLE')
+        'SIMPLE'
+    """
+    # 처음 3개 세그먼트 추출: XX-YY-ZZ 형식
+    match = re.match(r'^([^-]+(?:-[^-]+){2})', product_code)
+    return match.group(1) if match else product_code
 
 
 def batch_process(

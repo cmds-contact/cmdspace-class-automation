@@ -37,8 +37,8 @@ def _create_products_table(base) -> bool:
         return False
 
 
-def _create_member_products_table(base, members_table_id: str | None, products_table_id: str | None) -> bool:
-    """MemberProducts 테이블 생성
+def _create_member_programs_table(base, members_table_id: str | None, products_table_id: str | None) -> bool:
+    """MemberPrograms 테이블 생성
 
     Args:
         base: Airtable Base 객체
@@ -48,11 +48,11 @@ def _create_member_products_table(base, members_table_id: str | None, products_t
     Returns:
         생성 성공 여부
     """
-    member_products_name = config.AIRTABLE_TABLES['member_products']
+    member_programs_name = config.AIRTABLE_TABLES['member_programs']
 
     # Primary field는 반드시 text 타입이어야 함
     fields = [
-        {"name": "MemberProducts Code", "type": "singleLineText"},  # Primary field (MemberCode_ProductCode)
+        {"name": "MemberPrograms Code", "type": "singleLineText"},  # Primary field (MemberCode_ProgramCode)
         {"name": "Subscription Status", "type": "singleSelect", "options": {
             "choices": [
                 {"name": "Active", "color": "greenBright"},
@@ -81,16 +81,16 @@ def _create_member_products_table(base, members_table_id: str | None, products_t
         })
 
     try:
-        base.create_table(member_products_name, fields=fields)
-        logger.info(f"{member_products_name} 테이블 생성 완료")
+        base.create_table(member_programs_name, fields=fields)
+        logger.info(f"{member_programs_name} 테이블 생성 완료")
         return True
     except Exception as e:
-        logger.error(f"{member_products_name} 테이블 생성 실패: {e}")
+        logger.error(f"{member_programs_name} 테이블 생성 실패: {e}")
         return False
 
 
 def ensure_tables_exist(api: Api) -> dict[str, bool]:
-    """Products와 MemberProducts 테이블이 존재하는지 확인하고 없으면 생성
+    """Products와 MemberPrograms 테이블이 존재하는지 확인하고 없으면 생성
 
     pyairtable 3.x의 Base.schema() API를 사용하여 테이블 생성
 
@@ -104,7 +104,7 @@ def ensure_tables_exist(api: Api) -> dict[str, bool]:
     logger.info("테이블 존재 확인")
     logger.info(f"{'='*50}")
 
-    results = {'products': False, 'member_products': False}
+    results = {'products': False, 'member_programs': False}
 
     # 기존 테이블 목록 조회
     try:
@@ -124,10 +124,10 @@ def ensure_tables_exist(api: Api) -> dict[str, bool]:
     else:
         logger.info(f"{products_name} 테이블 이미 존재")
 
-    # MemberProducts 테이블 확인/생성
-    member_products_name = config.AIRTABLE_TABLES['member_products']
-    if member_products_name not in existing_tables:
-        logger.info(f"\n{member_products_name} 테이블 생성 중...")
+    # MemberPrograms 테이블 확인/생성
+    member_programs_name = config.AIRTABLE_TABLES['member_programs']
+    if member_programs_name not in existing_tables:
+        logger.info(f"\n{member_programs_name} 테이블 생성 중...")
 
         # Members와 Products 테이블 ID 조회
         members_table_id = None
@@ -141,10 +141,10 @@ def ensure_tables_exist(api: Api) -> dict[str, bool]:
             elif table.name == products_name:
                 products_table_id = table.id
 
-        results['member_products'] = _create_member_products_table(
+        results['member_programs'] = _create_member_programs_table(
             base, members_table_id, products_table_id
         )
     else:
-        logger.info(f"{member_products_name} 테이블 이미 존재")
+        logger.info(f"{member_programs_name} 테이블 이미 존재")
 
     return results

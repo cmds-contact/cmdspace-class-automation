@@ -8,7 +8,7 @@ from .csv_reader import read_csv, find_csv
 from .records import (
     get_existing_by_key,
     get_existing_orders,
-    get_existing_member_products,
+    get_existing_member_programs,
     get_pending_refunds,
 )
 from .validators import check_airtable_duplicates, check_csv_duplicates
@@ -19,8 +19,8 @@ from .sync import (
     sync_orders,
     sync_refunds,
     sync_products,
-    sync_member_products,
-    update_orders_member_products_link,
+    sync_member_programs,
+    update_orders_member_programs_link,
 )
 
 # Schema, History, Maintenance
@@ -28,7 +28,7 @@ from .schema import ensure_tables_exist
 from .history import record_sync_history
 from .maintenance import (
     backfill_iso_dates,
-    fix_member_products_codes,
+    fix_member_programs_codes,
     backfill_is_active,
     validate_required_fields,
     backfill_refunds_orders_link,
@@ -47,7 +47,7 @@ __all__ = [
     # Records
     'get_existing_by_key',
     'get_existing_orders',
-    'get_existing_member_products',
+    'get_existing_member_programs',
     'get_pending_refunds',
     # Validators
     'check_airtable_duplicates',
@@ -57,13 +57,13 @@ __all__ = [
     'sync_orders',
     'sync_refunds',
     'sync_products',
-    'sync_member_products',
-    'update_orders_member_products_link',
+    'sync_member_programs',
+    'update_orders_member_programs_link',
     # Schema, History, Maintenance
     'ensure_tables_exist',
     'record_sync_history',
     'backfill_iso_dates',
-    'fix_member_products_codes',
+    'fix_member_programs_codes',
     'backfill_is_active',
     'validate_required_fields',
     'backfill_refunds_orders_link',

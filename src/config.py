@@ -103,7 +103,7 @@ _default_tables: dict[str, str] = {
     'orders': 'Orders',
     'refunds': 'Refunds',
     'products': 'Products',
-    'member_products': 'MemberProducts',
+    'member_programs': 'MemberPrograms',  # 이전: member_products -> MemberProducts
     'sync_history': 'SyncHistory'
 }
 AIRTABLE_TABLES: dict[str, str] = {

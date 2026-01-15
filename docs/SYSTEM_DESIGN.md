@@ -149,7 +149,7 @@
 │  ├── Members (회원)                  │
 │  ├── Orders (주문)                   │
 │  ├── Products (상품)                 │
-│  ├── MemberProducts (회원별 상태)    │
+│  ├── MemberPrograms (회원별 프로그램)│
 │  ├── Refunds (환불)                  │
 │  └── SyncHistory (동기화 이력)       │
 └─────────────────────────────────────┘
@@ -180,14 +180,14 @@
 
 3. Products (상품)
    └─▶ Orders에서 상품명 추출
-   └─▶ MemberProducts에서 참조
+   └─▶ MemberPrograms에서 참조
 
-4. MemberProducts (회원별 상품) - 신규만
+4. MemberPrograms (회원별 프로그램) - 신규만
    └─▶ Members, Products, Orders 모두 필요
    └─▶ 구독 상태/만료일은 Airtable Formula가 처리
 
-5. Orders - MemberProducts 연결 업데이트
-   └─▶ MemberProducts 생성 후 Orders와 연결
+5. Orders - MemberPrograms 연결 업데이트
+   └─▶ MemberPrograms 생성 후 Orders와 연결
 
 6. Refunds (환불)
    └─▶ Orders와 연결 필요
@@ -201,15 +201,15 @@
 
 ```
 ┌─────────────┐          ┌──────────────────┐          ┌─────────────┐
-│   Members   │◀────────▶│  MemberProducts  │◀────────▶│  Products   │
-│   (회원)    │  1:N     │   (회원별 상태)   │   N:1    │   (상품)    │
+│   Members   │◀────────▶│  MemberPrograms  │◀────────▶│  Products   │
+│   (회원)    │  1:N     │ (회원별 프로그램) │   N:1    │   (상품)    │
 └─────────────┘          └──────────────────┘          └─────────────┘
        │                          ▲
        │ 1:N                      │ N:1
        ▼                          │
 ┌─────────────┐                   │
 │   Orders    │───────────────────┘
-│   (주문)    │   MemberProducts 연결 (Member Code + Product name)
+│   (주문)    │   MemberPrograms 연결 (Member Code + Program Code)
 └─────────────┘
        │
        │ 1:1
@@ -264,10 +264,10 @@
 | Date and Time of Payment | Text | 결제일시 (원본) | `2024-12-27 15:30:45` |
 | Date and Time of Payment (ISO) | DateTime | 결제일시 (표준형식) | `2024-12-27T15:30:45+09:00` |
 | Member | Link | Members 테이블 연결 | (자동 연결) |
-| MemberProducts | Link | MemberProducts 테이블 연결 | (자동 연결) |
+| MemberPrograms | Link | MemberPrograms 테이블 연결 | (자동 연결) |
 
 **중요**: `Payment Type`이 `Regular Payment`면 **구독 상품**입니다.
-**연결 방식**: MemberProducts는 `{Member Code}_{Product name}` 형식의 코드로 연결됩니다.
+**연결 방식**: MemberPrograms는 `{Member Code}_{Program Code}` 형식의 코드로 연결됩니다.
 
 ---
 
@@ -286,19 +286,34 @@
 
 ---
 
-#### MemberProducts (회원별 상품 상태) ⭐ 핵심 테이블
+#### MemberPrograms (회원별 프로그램 상태) ⭐ 핵심 테이블
 
-회원이 구매한 각 상품의 상태를 관리합니다.
+회원이 구매한 각 프로그램의 상태를 관리합니다.
+
+> **Program Code란?**
+> Product Code의 처음 3개 세그먼트를 Program Code로 사용합니다.
+> - 예: `KM-CMDS-OBM-ME-1` → Program Code: `KM-CMDS-OBM`
+> - 뒷부분(`ME-1`, `YE-2` 등)은 **구매 옵션**(할인, 정가, 연간 등)을 나타냅니다.
+> - 같은 프로그램의 다른 옵션을 구매해도 하나의 MemberPrograms 레코드로 관리됩니다.
 
 | 필드명 | 타입 | 설명 | 예시 |
 |--------|------|------|------|
-| MemberProducts Code | Text | **고유 키** - 회원+상품 식별자 | `ABC123_KM-CMDS-OBM-ME-1` |
+| MemberPrograms Code | Text | **고유 키** - 회원+프로그램 식별자 | `ABC123_KM-CMDS-OBM` |
 | Member | Link | Members 테이블 연결 | (자동 연결) |
 | Product | Link | Products 테이블 연결 | (자동 연결) |
 | Subscription Status | Formula | 구독 상태 **(Airtable Formula)** | `Active` / `Expired` / `N/A` |
 | Last Payment Date | Rollup | 마지막 결제일 **(Airtable Rollup)** | `2024-12-27` |
 | Expiry Date | Formula | 만료일 **(Airtable Formula)** | `2025-01-26` |
 | Welcome Sent | Checkbox | 첫 구매 안내 완료 여부 | ☐ (미완료) / ✅ (완료) |
+
+**Program Code 추출 규칙** (REGEX):
+```
+REGEX: ^([^-]+(-[^-]+){2})
+예시:
+  KM-CMDS-OBM-ME-1  → KM-CMDS-OBM
+  KM-CMDS-OBM-YE-2  → KM-CMDS-OBM
+  KM-CMDS-OBM       → KM-CMDS-OBM (세그먼트가 3개면 그대로)
+```
 
 **Subscription Status 설명** (Airtable Formula로 자동 계산):
 - `Active`: 구독 진행 중 (만료일이 오늘 이후)
@@ -373,7 +388,7 @@ AIRTABLE_TABLES = {
     'members': 'Members',
     'orders': 'Orders',
     'products': 'Products',
-    'member_products': 'MemberProducts',
+    'member_programs': 'MemberPrograms',
     'refunds': 'Refunds',
     'sync_history': 'SyncHistory'
 }
@@ -385,6 +400,7 @@ AIRTABLE_TABLES = {
 
 | 함수명 | 역할 | 예시 |
 |--------|------|------|
+| `extract_program_code(product_code)` | Product Code에서 Program Code 추출 | `KM-CMDS-OBM-ME-1` → `KM-CMDS-OBM` |
 | `batch_iterator(items, size)` | 리스트를 배치로 나눔 | 100개씩 나눠서 처리 |
 | `parse_price("1,000원")` | 가격 문자열 → 숫자 | `1000` |
 | `safe_get(dict, key)` | 딕셔너리 안전 조회 | 키가 없으면 빈 문자열 |
@@ -417,8 +433,8 @@ CSV 데이터를 Airtable로 동기화합니다.
 ├── sync_members_to_airtable()          # 회원 동기화
 ├── sync_orders_to_airtable()           # 주문 동기화
 ├── sync_products_to_airtable()         # 상품 동기화
-├── sync_member_products_to_airtable()  # 회원별 상품 동기화 (신규만)
-├── update_orders_member_products_link() # Orders-MemberProducts 연결
+├── sync_member_programs_to_airtable()  # 회원별 프로그램 동기화 (신규만)
+├── update_orders_member_programs_link() # Orders-MemberPrograms 연결
 ├── sync_refunds_to_airtable()          # 환불 동기화
 ├── sync_all_to_airtable()              # 전체 동기화
 └── record_sync_history()               # 동기화 이력 기록
@@ -426,7 +442,7 @@ CSV 데이터를 Airtable로 동기화합니다.
 헬퍼 함수:
 ├── get_existing_records()              # 테이블에서 기존 레코드 조회
 ├── get_existing_orders()               # 주문 레코드 조회
-├── get_existing_member_products()      # MemberProducts 레코드 조회
+├── get_existing_member_programs()      # MemberPrograms 레코드 조회
 └── get_pending_refunds()               # 미결정 환불 조회
 ```
 
@@ -491,11 +507,13 @@ IF(
 4. 만료일 <= 오늘 → "Expired"
 ```
 
-### 6.2 MemberProducts 생성 로직
+### 6.2 MemberPrograms 생성 로직
 
 ```
-신규 레코드 (회원+상품 조합이 처음인 경우):
-├── MemberProducts Code = {Member Code}_{Product name}
+신규 레코드 (회원+프로그램 조합이 처음인 경우):
+├── MemberPrograms Code = {Member Code}_{Program Code}
+│   └── Program Code = extract_program_code(Product name)
+│       예: KM-CMDS-OBM-ME-1 → KM-CMDS-OBM
 ├── Member = [member_id] (Linked Record)
 ├── Product = [product_id] (Linked Record)
 ├── Welcome Sent = False (체크 안 됨)
@@ -503,6 +521,9 @@ IF(
 
 기존 레코드:
 └── Python에서 업데이트하지 않음 (Airtable이 자동 계산)
+
+중복 방지:
+└── 같은 프로그램의 다른 옵션(ME-1, YE-2)을 구매해도 하나의 레코드만 존재
 ```
 
 **중요**:
@@ -574,7 +595,7 @@ python -m src.main --init-orders
 1. **Products 테이블**에서 `Subscription Days` 입력
    - 각 상품의 구독 기간(일수)을 수동으로 입력
 
-2. **MemberProducts 테이블**에서 `Welcome Sent` 관리
+2. **MemberPrograms 테이블**에서 `Welcome Sent` 관리
    - 신규 레코드 확인 (Welcome Sent = 미체크)
    - 안내 발송 후 체크
 
@@ -594,14 +615,14 @@ python -m src.main --init-orders
 - 체크 안 됨 → N/A
 - 체크 됨 + Subscription Days 입력됨 → Active 또는 Expired
 
-### Q3. MemberProducts에 레코드가 없어요
+### Q3. MemberPrograms에 레코드가 없어요
 
 **A**: 다음을 확인하세요:
 1. Members 테이블에 해당 회원이 있는지
 2. Products 테이블에 해당 상품이 있는지
 3. Orders에 해당 주문이 있는지
 
-세 테이블 모두 데이터가 있어야 MemberProducts가 생성됩니다.
+세 테이블 모두 데이터가 있어야 MemberPrograms가 생성됩니다.
 
 ### Q4. 동기화가 실패했어요
 
@@ -617,7 +638,7 @@ python -m src.main --init-orders
 - Members: Member Code
 - Orders: Order Number
 - Products: Product Code
-- MemberProducts: Member + Product 조합
+- MemberPrograms: Member + Program 조합 (같은 프로그램의 다른 옵션은 하나의 레코드)
 - Refunds: Order Number
 
 ---
@@ -626,6 +647,7 @@ python -m src.main --init-orders
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| 2026-01-15 | 2.3 | **MemberProducts → MemberPrograms 리네이밍**, Program Code 기반 레코드 관리 도입 |
 | 2026-01-01 | 2.2 | Orders-MemberProducts Linked Record 추가, 구독 상태 계산을 Airtable Formula로 이관 |
 | 2024-12-30 | 2.1 | Products, MemberProducts 테이블 추가 |
 | 2024-12-27 | 2.0 | 프로젝트 통합 및 재구성 |
@@ -634,4 +656,4 @@ python -m src.main --init-orders
 ---
 
 *문서 작성: Claude Code*
-*최종 업데이트: 2026-01-01*
+*최종 업데이트: 2026-01-15*

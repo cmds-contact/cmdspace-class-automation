@@ -7,7 +7,7 @@ from pyairtable import Api
 
 from .. import config
 from ..logger import logger
-from ..utils import batch_iterator, to_iso_datetime
+from ..utils import batch_iterator, to_iso_datetime, extract_program_code
 
 from .client import get_api, get_table
 from .csv_reader import find_csv, read_csv
@@ -96,11 +96,14 @@ def backfill_iso_dates(api: Api = None) -> dict[str, int]:
     return results
 
 
-def fix_member_products_codes(api: Api = None) -> int:
-    """MemberProducts 테이블의 잘못된 MemberProducts Code 필드를 수정
+def fix_member_programs_codes(api: Api = None) -> int:
+    """MemberPrograms 테이블의 잘못된 MemberPrograms Code 필드를 수정
 
-    MemberProducts Code 형식: MemberCode_ProductCode
-    예: SUBIJIML5JEDXC7HCAK-JKWV2_KM-CMDS-OBM-ME-1
+    MemberPrograms Code 형식: MemberCode_ProgramCode
+    예: SUBIJIML5JEDXC7HCAK-JKWV2_KM-CMDS-OBM
+
+    Program Code는 Product Code의 처음 3개 세그먼트:
+    - KM-CMDS-OBM-ME-1 → KM-CMDS-OBM
 
     Args:
         api: Airtable API 클라이언트 (없으면 새로 생성)
@@ -112,10 +115,10 @@ def fix_member_products_codes(api: Api = None) -> int:
         api = get_api()
 
     logger.info(f"\n{'='*60}")
-    logger.info("MemberProducts Code 필드 수정")
+    logger.info("MemberPrograms Code 필드 수정")
     logger.info("=" * 60)
 
-    member_products_table = get_table(api, config.AIRTABLE_TABLES['member_products'])
+    member_programs_table = get_table(api, config.AIRTABLE_TABLES['member_programs'])
     members_table = get_table(api, config.AIRTABLE_TABLES['members'])
     products_table = get_table(api, config.AIRTABLE_TABLES['products'])
 
@@ -136,12 +139,12 @@ def fix_member_products_codes(api: Api = None) -> int:
     logger.info(f"Members: {len(members_by_id)}개")
     logger.info(f"Products: {len(products_by_id)}개")
 
-    # MemberProducts에서 잘못된 코드 찾기
-    all_records = member_products_table.all()
+    # MemberPrograms에서 잘못된 코드 찾기
+    all_records = member_programs_table.all()
     records_to_update = []
 
     for record in all_records:
-        code = record['fields'].get('MemberProducts Code', '')
+        code = record['fields'].get('MemberPrograms Code', '')
 
         # 코드에 '_'가 없으면 잘못된 형식
         if '_' not in code:
@@ -156,10 +159,12 @@ def fix_member_products_codes(api: Api = None) -> int:
                 product_code = products_by_id.get(product_id)
 
                 if member_code and product_code:
-                    new_code = f"{member_code}_{product_code}"
+                    # Product Code에서 Program Code 추출
+                    program_code = extract_program_code(product_code)
+                    new_code = f"{member_code}_{program_code}"
                     records_to_update.append({
                         'id': record['id'],
-                        'fields': {'MemberProducts Code': new_code}
+                        'fields': {'MemberPrograms Code': new_code}
                     })
 
     logger.info(f"수정 대상: {len(records_to_update)}개")
@@ -171,7 +176,7 @@ def fix_member_products_codes(api: Api = None) -> int:
     # 배치 업데이트
     updated = 0
     for batch in batch_iterator(records_to_update, AIRTABLE_BATCH_SIZE):
-        member_products_table.batch_update(batch)
+        member_programs_table.batch_update(batch)
         updated += len(batch)
 
     logger.info(f"수정 완료: {updated}개")

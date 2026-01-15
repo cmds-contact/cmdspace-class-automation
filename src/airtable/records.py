@@ -37,16 +37,16 @@ def get_existing_orders(table: Table) -> dict[str, str]:
     return get_existing_by_key(table, 'Order Number')
 
 
-def get_existing_member_products(table: Table) -> dict[str, str]:
-    """Airtable에서 기존 MemberProducts 레코드 조회
+def get_existing_member_programs(table: Table) -> dict[str, str]:
+    """Airtable에서 기존 MemberPrograms 레코드 조회
 
     Args:
-        table: Airtable MemberProducts 테이블 객체
+        table: Airtable MemberPrograms 테이블 객체
 
     Returns:
-        MemberProducts Code -> record_id 매핑 딕셔너리
+        MemberPrograms Code -> record_id 매핑 딕셔너리
     """
-    return get_existing_by_key(table, 'MemberProducts Code')
+    return get_existing_by_key(table, 'MemberPrograms Code')
 
 
 def get_pending_refunds(table: Table) -> dict[str, dict[str, Any]]:

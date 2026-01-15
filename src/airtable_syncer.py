@@ -17,13 +17,13 @@ from .airtable import (
     sync_orders as sync_orders_to_airtable,
     sync_refunds as sync_refunds_to_airtable,
     sync_products as sync_products_to_airtable,
-    sync_member_products as sync_member_products_to_airtable,
-    update_orders_member_products_link,
+    sync_member_programs as sync_member_programs_to_airtable,
+    update_orders_member_programs_link,
     # Schema, History, Maintenance
     ensure_tables_exist,
     record_sync_history,
     backfill_iso_dates,
-    fix_member_products_codes,
+    fix_member_programs_codes,
     validate_required_fields,
     backfill_refunds_orders_link,
     # Member management
@@ -40,8 +40,8 @@ def sync_all_to_airtable() -> dict[str, dict[str, Any]]:
     1. Members - 회원 데이터
     2. Orders - 주문 데이터 (신규 추가, Member 연결)
     3. Products - 상품 마스터 (Orders에서 추출)
-    4. MemberProducts - 회원별 상품 (신규만)
-    5. Orders - MemberProducts 연결 업데이트
+    4. MemberPrograms - 회원별 프로그램 (신규만)
+    5. Orders - MemberPrograms 연결 업데이트
     6. Refunds - 환불 데이터
 
     Returns:
@@ -87,21 +87,21 @@ def sync_all_to_airtable() -> dict[str, dict[str, Any]]:
             logger.warning(f"Products 동기화 건너뜀: {e}")
             results['products'] = {'new': 0, 'error': str(e)}
 
-        # MemberProducts 동기화 (신규만)
+        # MemberPrograms 동기화 (신규만)
         try:
-            member_products_result = sync_member_products_to_airtable(api)
-            results['member_products'] = member_products_result
+            member_programs_result = sync_member_programs_to_airtable(api)
+            results['member_programs'] = member_programs_result
         except Exception as e:
-            logger.warning(f"MemberProducts 동기화 건너뜀: {e}")
-            results['member_products'] = {'new': 0, 'error': str(e)}
+            logger.warning(f"MemberPrograms 동기화 건너뜀: {e}")
+            results['member_programs'] = {'new': 0, 'error': str(e)}
 
-        # Orders → MemberProducts 연결 업데이트
+        # Orders → MemberPrograms 연결 업데이트
         try:
-            orders_linked = update_orders_member_products_link(api)
-            results['orders']['member_products_linked'] = orders_linked
+            orders_linked = update_orders_member_programs_link(api)
+            results['orders']['member_programs_linked'] = orders_linked
         except Exception as e:
-            logger.warning(f"Orders-MemberProducts 연결 건너뜀: {e}")
-            results['orders']['member_products_linked'] = 0
+            logger.warning(f"Orders-MemberPrograms 연결 건너뜀: {e}")
+            results['orders']['member_programs_linked'] = 0
 
         # Refunds 동기화 (상태 변경 업데이트 포함)
         try:

@@ -4,16 +4,16 @@
 """
 
 from .members import sync_members
-from .orders import sync_orders, update_orders_member_products_link
+from .orders import sync_orders, update_orders_member_programs_link
 from .refunds import sync_refunds
 from .products import sync_products
-from .member_products import sync_member_products
+from .member_programs import sync_member_programs
 
 __all__ = [
     'sync_members',
     'sync_orders',
     'sync_refunds',
     'sync_products',
-    'sync_member_products',
-    'update_orders_member_products_link',
+    'sync_member_programs',
+    'update_orders_member_programs_link',
 ]
