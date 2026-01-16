@@ -1,3 +1,5 @@
+Conversation in Korean(대화를 할 때는 한국어로 합니다.)
+
 # MANDATORY: 프로젝트 규칙
 
 > **ABSOLUTE RULES - 어떤 상황에서도 예외 없이 반드시 준수**
