@@ -1,0 +1,23 @@
+# CODEOWNERS - Define code ownership for automatic review requests
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repository
+* @tagg
+
+# Source code
+/src/ @tagg
+
+# Tests
+/tests/ @tagg
+
+# Configuration files
+pyproject.toml @tagg
+settings.yaml @tagg
+.pre-commit-config.yaml @tagg
+
+# Documentation
+/docs/ @tagg
+*.md @tagg
+
+# CI/CD
+/.github/ @tagg

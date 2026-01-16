@@ -72,3 +72,118 @@ fs.renameSync('file.txt', '.trash/file.txt')
 fs.unlinkSync('file.txt')
 fs.rmdirSync('folder/')
 ```
+
+---
+
+# Development Guidelines
+
+## Code Quality
+
+### Type Hints (Required)
+
+All functions must have type hints. Use modern Python 3.11+ syntax:
+
+```python
+# Good
+def process_data(items: list[str]) -> dict[str, int] | None:
+    ...
+
+# Bad (no type hints)
+def process_data(items):
+    ...
+```
+
+### Docstrings (Required)
+
+Use Google-style docstrings for public functions and classes:
+
+```python
+def sync_member(email: str, data: dict[str, Any]) -> bool:
+    """Synchronize member data to Airtable.
+
+    Args:
+        email: Member's email address.
+        data: Field data to sync.
+
+    Returns:
+        True if sync was successful.
+
+    Raises:
+        AirtableError: If API request fails.
+    """
+```
+
+## Testing
+
+### Run Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Run with Coverage
+
+```bash
+pytest tests/ --cov=src --cov-report=term-missing
+```
+
+### Test Naming
+
+Use descriptive names: `test_<function>_<scenario>_<expected_result>`
+
+## Linting & Formatting
+
+### Check Code
+
+```bash
+ruff check src/ tests/
+mypy src/
+```
+
+### Auto-fix
+
+```bash
+ruff check --fix src/ tests/
+ruff format src/ tests/
+```
+
+### Pre-commit
+
+```bash
+pre-commit install        # Install hooks (once)
+pre-commit run --all-files  # Run on all files
+```
+
+## Git Workflow
+
+### Branch Naming
+
+| Prefix | Purpose |
+|--------|---------|
+| `feature/` | New features |
+| `fix/` | Bug fixes |
+| `docs/` | Documentation |
+| `refactor/` | Code refactoring |
+
+### Commit Messages (Conventional Commits)
+
+```
+<type>(<scope>): <description>
+
+Types: feat, fix, docs, style, refactor, perf, test, chore
+
+Examples:
+- feat(sync): add member deactivation
+- fix(download): handle UTF-8 BOM
+- docs: update README
+```
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Run tests | `pytest tests/ -v` |
+| Lint check | `ruff check src/ tests/` |
+| Type check | `mypy src/` |
+| Format code | `ruff format src/ tests/` |
+| Pre-commit | `pre-commit run --all-files` |

@@ -46,3 +46,17 @@ wheels/
 
 # Trash
 .trash/
+
+# Tool Caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.pre-commit-cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
