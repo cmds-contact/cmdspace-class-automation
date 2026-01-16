@@ -4,6 +4,95 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.3.0] - 2026-01-16
+
+### Summary
+MemberProducts → MemberPrograms 리팩토링. Program Code 기반 레코드 관리로 변경하여 같은 프로그램의 다른 구매 옵션을 하나의 레코드로 통합 관리.
+
+### Breaking Changes
+
+#### 테이블 이름 변경
+- **MemberProducts** → **MemberPrograms**
+
+#### 필드 이름 변경
+- `MemberProducts Code` → `MemberPrograms Code`
+- Orders 테이블: `MemberProducts` → `MemberPrograms` (Linked Record)
+
+#### Code 형식 변경
+```
+이전: {Member Code}_{Product Code}
+      예: ABC123_KM-CMDS-OBM-ME-1
+
+변경: {Member Code}_{Program Code}
+      예: ABC123_KM-CMDS-OBM
+```
+
+### Added
+
+#### New Utility Function (utils.py)
+- `extract_program_code()`: Product Code에서 Program Code 추출
+  - REGEX: `^([^-]+(?:-[^-]+){2})`
+  - 예: `KM-CMDS-OBM-ME-1` → `KM-CMDS-OBM`
+
+#### New Migration Package (src/airtable/migration/)
+- `migrate_to_member_programs.py`: 기존 데이터 마이그레이션 스크립트
+  - Dry run 지원
+  - 중복 레코드 자동 감지 및 병합
+  - Welcome Sent=True 레코드 우선 유지
+
+### Changed
+
+#### 파일 리네임
+- `src/airtable/sync/member_products.py` → `src/airtable/sync/member_programs.py`
+
+#### 함수 리네임
+| 이전 | 변경 |
+|------|------|
+| `sync_member_products()` | `sync_member_programs()` |
+| `get_existing_member_products()` | `get_existing_member_programs()` |
+| `update_orders_member_products_link()` | `update_orders_member_programs_link()` |
+| `fix_member_products_codes()` | `fix_member_programs_codes()` |
+| `_create_member_products_table()` | `_create_member_programs_table()` |
+
+#### 설정 파일
+- `config.py`: `member_products` → `member_programs`
+- `settings.yaml`: `member_products` → `member_programs`
+
+### Migration
+
+#### 마이그레이션 결과
+- Code 업데이트: 1,365개 레코드
+- 중복 병합으로 삭제: 13개 레코드
+- 최종 레코드 수: 1,378개
+
+#### 실행 방법
+```bash
+# Dry run
+python -c "from src.airtable.migration import migrate_to_member_programs; migrate_to_member_programs(dry_run=True)"
+
+# 실제 실행
+python -c "from src.airtable.migration import migrate_to_member_programs; migrate_to_member_programs(dry_run=False)"
+```
+
+### Technical Details
+
+#### Program Code 추출 규칙
+```
+Product Code: KM-CMDS-OBM-ME-1
+              ├─────────┤ └──┤
+              Program    Option
+              Code       (할인/정가 등)
+
+Program Code = 처음 3개 세그먼트
+REGEX: ^([^-]+(?:-[^-]+){2})
+```
+
+#### 비즈니스 로직
+- 같은 프로그램의 다른 옵션(ME-1, YE-2 등)은 하나의 MemberPrograms 레코드로 관리
+- Welcome Sent는 프로그램 단위로 1회만 발송
+
+---
+
 ## [2.2.0] - 2026-01-01
 
 ### Summary
